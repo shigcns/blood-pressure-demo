@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>暖心血压通 - 独居老人血压监测</title>
+    <!-- 引入ECharts图表库：使用七牛云国内CDN，加载速度更稳定 -->
+    <script src="https://cdn.staticfile.org/echarts/5.4.3/echarts.min.js"></script>
+    <style>
+        /* ==========================================
+           全局样式 - 适老化设计：大字体、高对比度
+           ========================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            background-color: #FAF6F0;
+            color: #333;
+            /* 适老化：基础字号设为18px，比常规网页大 */
+            font-size: 18px;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* ==========================================
+           顶部标题栏
+           ========================================== */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .header h1 {
+            color: #7B3F00;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        /* ==========================================
+           卡片通用样式
+           ========================================== */
+        .card {
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .card-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: #7B3F00;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #E8D5B7;
+        }
+
+        /* ==========================================
+           表单样式 - 大输入框大按钮
+           ========================================== */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            font-size: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            /* 适老化：输入框足够大，方便点击 */
+            min-height: 50px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #8B4513;
+        }
+
+        /* 双列布局：收缩压和舒张压并排 */
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* 大按钮样式 - 适老化核心设计 */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 18px;
+            font-size: 22px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            /* 按钮足够大，老人手指容易点击 */
+            min-height: 60px;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background-color: #8B4513;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background-color: #6B3410;
+        }
+
+        .btn-secondary {
+            background-color: #F0E6D6;
+            color: #8B4513;
+            margin-top: 10px;
+        }
+
+        /* ==========================================
+           结果展示区域 - 颜色区分血压等级
+           ========================================== */
+        .result-box {
+            padding: 24px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+
+        /* 正常 - 绿色 */
+        .result-normal {
+            background-color: #e6f7e6;
+            border: 2px solid #52c41a;
+            color: #237804;
+        }
+
+        /* 正常高值 - 黄色 */
+        .result-high-normal {
+            background-color: #fffbe6;
+            border: 2px solid #faad14;
+            color: #ad6800;
+        }
+
+        /* 高血压 - 红色 */
+        .result-high {
+            background-color: #fff1f0;
+            border: 2px solid #f5222d;
+            color: #cf1322;
+        }
+
+        .result-level {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .result-value {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        /* ==========================================
+           建议区域 - 分老人版和家属版
+           ========================================== */
+        .advice-section {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: left;
+        }
+
+        .advice-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .advice-elder {
+            background-color: #F5EBE0;
+        }
+
+        .advice-family {
+            background-color: #fff7e6;
+            margin-top: 10px;
+        }
+
+        /* ==========================================
+           历史记录表格
+           ========================================== */
+        .record-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .record-table th,
+        .record-table td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            /* 表格文字也要大 */
+            font-size: 16px;
+        }
+
+        .record-table th {
+            background-color: #FAF6F0;
+            font-weight: bold;
+            color: #555;
+        }
+
+        /* 表格中不同等级的颜色标签 */
+        .tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .tag-normal { background-color: #d9f7be; color: #389e0d; }
+        .tag-high-normal { background-color: #fff1b8; color: #d48806; }
+        .tag-high { background-color: #ffccc7; color: #cf1322; }
+
+        /* 空数据提示 */
+        .empty-tip {
+            text-align: center;
+            color: #999;
+            padding: 30px;
+        }
+
+        /* ==========================================
+           视图切换：老人模式 / 家属模式
+           ========================================== */
+        .view-switch {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .view-btn {
+            flex: 1;
+            padding: 12px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            background: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .view-btn.active {
+            background-color: #8B4513;
+            color: #fff;
+            border-color: #8B4513;
+        }
+
+        /* 家属模式下才显示的统计信息 */
+        .family-only {
+            display: none;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 15px;
+            background-color: #FAF6F0;
+            border-radius: 8px;
+        }
+
+        .stat-num {
+            font-size: 28px;
+            font-weight: bold;
+            color: #7B3F00;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* ==========================================
+           血压趋势折线图容器样式
+           ========================================== */
+        .chart-container {
+            width: 100%;
+            height: 350px;  /* 图表高度固定，保证手机上也能看清 */
+            margin-top: 10px;
+        }
+
+        /* 响应式：手机端适配 */
+        @media (max-width: 600px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+            .stats-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部标题 -->
+        <div class="header">
+            <h1>❤️ 暖心血压通</h1>
+            <p>独居老人血压监测与健康关怀系统</p>
+        </div>
+
+        <!-- 视图切换：老人端 / 家属端 -->
+        <div class="view-switch">
+            <button class="view-btn active" onclick="switchView('elder')">👴 老人模式</button>
+            <button class="view-btn" onclick="switchView('family')">👨‍👩‍👧 家属模式</button>
+        </div>
+
+        <!-- 第一步：老人基本信息设置 -->
+        <div class="card" id="infoCard">
+            <div class="card-title">📝 基本信息</div>
+            <div class="two-column">
+                <div class="form-group">
+                    <label>姓名</label>
+                    <input type="text" id="elderName" placeholder="请输入老人姓名" value="张爷爷">
+                </div>
+                <div class="form-group">
+                    <label>年龄（岁）</label>
+                    <input type="number" id="elderAge" placeholder="请输入年龄" value="72" min="60" max="120">
+                </div>
+            </div>
+        </div>
+
+        <!-- 第二步：血压录入 -->
+        <div class="card">
+            <div class="card-title">💓 测量血压</div>
+            <div class="two-column">
+                <div class="form-group">
+                    <label>收缩压（高压 mmHg）</label>
+                    <input type="number" id="systolic" placeholder="如 130" min="60" max="250">
+                </div>
+                <div class="form-group">
+                    <label>舒张压（低压 mmHg）</label>
+                    <input type="number" id="diastolic" placeholder="如 80" min="30" max="150">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="addRecord()">✓ 记录本次血压</button>
+
+            <!-- 结果展示区 -->
+            <div class="result-box" id="resultBox">
+                <div class="result-level" id="resultLevel"></div>
+                <div class="result-value" id="resultValue"></div>
+                <div id="adviceArea"></div>
+            </div>
+        </div>
+
+        <!-- 第三步：家属端统计概览（仅家属模式显示） -->
+        <div class="card family-only" id="statsCard">
+            <div class="card-title">📊 近期血压概览</div>
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-num" id="totalCount">0</div>
+                    <div class="stat-label">总测量次数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="normalCount">0</div>
+                    <div class="stat-label">正常次数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="abnormalCount">0</div>
+                    <div class="stat-label">异常次数</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第四步：血压趋势折线图（家属模式更直观，老人模式也可看） -->
+        <div class="card">
+            <div class="card-title">📈 血压变化趋势</div>
+            <!-- 图表容器：ECharts会把图画在这个div里 -->
+            <div class="chart-container" id="bpChart"></div>
+        </div>
+
+        <!-- 第五步：历史记录表格 -->
+        <div class="card">
+            <div class="card-title">📋 历史记录</div>
+            <table class="record-table" id="recordTable">
+                <thead>
+                    <tr>
+                        <th>测量时间</th>
+                        <th>高压</th>
+                        <th>低压</th>
+                        <th>结果判断</th>
+                    </tr>
+                </thead>
+                <tbody id="recordBody">
+                    <!-- 记录会通过JS动态插入 -->
+                </tbody>
+            </table>
+            <div class="empty-tip" id="emptyTip">暂无测量记录，请先录入血压数据</div>
+            <button class="btn btn-secondary" onclick="clearAllRecords()">🗑️ 清空所有记录</button>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================
+           一、数据存储 - 使用浏览器LocalStorage
+           原理：把血压记录存在浏览器本地，刷新不丢失
+           ========================================== */
+        const STORAGE_KEY = 'blood_pressure_records';
+
+        // 从本地存储读取所有历史记录
+        function getRecords() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        // 保存记录到本地存储
+        function saveRecords(records) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+        }
+
+        /* ==========================================
+           二、血压判断核心逻辑
+           根据年龄 + 测量时间，动态调整血压正常范围
+           ========================================== */
+
+        /**
+         * 判断血压等级
+         * @param {number} systolic - 收缩压（高压）
+         * @param {number} diastolic - 舒张压（低压）
+         * @param {number} age - 老人年龄
+         * @param {Date} time - 测量时间
+         * @returns {object} 包含等级名称、颜色样式、判断说明
+         */
+        function judgeBloodPressure(systolic, diastolic, age, time) {
+            /*
+             * 参考标准：《中国高血压防治指南》
+             * 普通成人标准：
+             *   正常：<120 / <80
+             *   正常高值：120-139 / 80-89
+             *   高血压1级：140-159 / 90-99
+             *   高血压2级：160-179 / 100-109
+             *   高血压3级：>=180 / >=110
+             */
+
+            // 【年龄修正系数】
+            // 65-79岁：收缩压正常上限放宽到140
+            // 80岁以上：收缩压正常上限放宽到150
+            let systolicLimit = 120;  // 正常收缩压上限
+            let diastolicLimit = 80;  // 正常舒张压上限
+
+            if (age >= 80) {
+                // 80岁以上高龄老人，血压控制目标适当放宽
+                systolicLimit = 150;
+                diastolicLimit = 90;
+            } else if (age >= 65) {
+                // 65-79岁老人，正常上限适当放宽
+                systolicLimit = 140;
+                diastolicLimit = 90;
+            }
+
+            // 【时段修正】
+            // 清晨6-10点是血压晨峰时段，收缩压可适当上浮10mmHg
+            const hour = time.getHours();
+            let morningBonus = 0;
+            if (hour >= 6 && hour <= 10) {
+                morningBonus = 10;  // 清晨晨峰，判断时放宽
+            }
+
+            // 调整后的判断阈值
+            const adjustedSystolicLimit = systolicLimit + morningBonus;
+
+            // 根据调整后的阈值判断等级
+            if (systolic < adjustedSystolicLimit && diastolic < diastolicLimit) {
+                return {
+                    level: '血压正常',
+                    type: 'normal',
+                    colorClass: 'result-normal',
+                    tagClass: 'tag-normal',
+                    desc: '您的血压在正常范围内，请继续保持！'
+                };
+            } else if (systolic < adjustedSystolicLimit + 20 && diastolic < diastolicLimit + 10) {
+                return {
+                    level: '正常高值',
+                    type: 'high-normal',
+                    colorClass: 'result-high-normal',
+                    tagClass: 'tag-high-normal',
+                    desc: '血压略偏高，注意饮食清淡，多休息。'
+                };
+            } else {
+                return {
+                    level: '血压偏高',
+                    type: 'high',
+                    colorClass: 'result-high',
+                    tagClass: 'tag-high',
+                    desc: '血压明显偏高，请注意观察，必要时联系医生。'
+                };
+            }
+        }
+
+        /* ==========================================
+           三、生成个性化建议
+           分两个视角：给老人的建议 + 给家属的建议
+           ========================================== */
+        function generateAdvice(judgeResult, systolic, diastolic, age) {
+            let elderAdvice = '';
+            let familyAdvice = '';
+
+            // 给老人的建议 - 语气温和、口语化
+            if (judgeResult.type === 'normal') {
+                elderAdvice = '😊 恭喜您，今天血压很稳定！记得按时吃药，多喝水，适当散步哦。';
+            } else if (judgeResult.type === 'high-normal') {
+                elderAdvice = '⚠️ 今天血压稍微有点高，别着急生气，坐下休息一会儿，少吃咸的东西。';
+            } else {
+                elderAdvice = '🚨 今天血压有点高哦，请先坐下安静休息。如果头晕不舒服，一定要及时给家人打电话，或者去医院看看。';
+            }
+
+            // 给家属的建议 - 侧重趋势和风险提示
+            if (judgeResult.type === 'normal') {
+                familyAdvice = '老人本次血压正常，近期状态稳定，可继续保持日常监测频率。';
+            } else if (judgeResult.type === 'high-normal') {
+                familyAdvice = '老人本次血压处于临界高值，建议关注近期饮食和睡眠情况，可电话提醒清淡饮食。';
+            } else {
+                familyAdvice = '⚠️ 老人本次血压偏高！建议尽快电话联系老人确认状态，如连续多次偏高请安排陪同就医。';
+            }
+
+            return { elderAdvice, familyAdvice };
+        }
+
+        /* ==========================================
+           四、核心交互：添加一条血压记录
+           ========================================== */
+        function addRecord() {
+            // 1. 获取用户输入
+            const name = document.getElementById('elderName').value.trim() || '老人';
+            const age = parseInt(document.getElementById('elderAge').value) || 70;
+            const systolic = parseInt(document.getElementById('systolic').value);
+            const diastolic = parseInt(document.getElementById('diastolic').value);
+
+            // 2. 简单的输入校验
+            if (!systolic || !diastolic) {
+                alert('请先输入完整的血压数值哦！');
+                return;
+            }
+            if (systolic < 60 || systolic > 250 || diastolic < 30 || diastolic > 150) {
+                alert('血压数值看起来不太对，请检查一下输入是否正确。');
+                return;
+            }
+
+            // 3. 创建记录对象，记录当前时间
+            const now = new Date();
+            const record = {
+                id: now.getTime(),  // 用时间戳作为唯一ID
+                time: now.toLocaleString('zh-CN'),  // 格式化时间显示
+                timestamp: now.getTime(),
+                systolic: systolic,
+                diastolic: diastolic,
+                age: age
+            };
+
+            // 4. 调用判断函数，得到血压等级
+            const judgeResult = judgeBloodPressure(systolic, diastolic, age, now);
+
+            // 5. 生成个性化建议
+            const advice = generateAdvice(judgeResult, systolic, diastolic, age);
+
+            // 6. 显示结果弹窗
+            showResult(judgeResult, systolic, diastolic, advice);
+
+            // 7. 保存记录到本地存储
+            const records = getRecords();
+            records.unshift(record);  // 新记录插在最前面
+            saveRecords(records);
+
+            // 8. 刷新表格展示、统计和趋势图
+            renderTable();
+            updateStats();
+            renderChart();
+
+            // 9. 清空输入框，方便下次录入
+            document.getElementById('systolic').value = '';
+            document.getElementById('diastolic').value = '';
+        }
+
+        /* ==========================================
+           五、结果展示区域
+           ========================================== */
+        function showResult(judgeResult, systolic, diastolic, advice) {
+            const box = document.getElementById('resultBox');
+            box.style.display = 'block';
+            box.className = 'result-box ' + judgeResult.colorClass;
+
+            document.getElementById('resultLevel').textContent = judgeResult.level;
+            document.getElementById('resultValue').textContent =
+                `高压 ${systolic} mmHg / 低压 ${diastolic} mmHg`;
+
+            // 拼接建议HTML
+            document.getElementById('adviceArea').innerHTML = `
+                <div class="advice-section advice-elder">
+                    <div class="advice-title">👴 给老人的话：</div>
+                    <div>${advice.elderAdvice}</div>
+                </div>
+                <div class="advice-section advice-family">
+                    <div class="advice-title">👨‍👩‍👧 给家属的提醒：</div>
+                    <div>${advice.familyAdvice}</div>
+                </div>
+            `;
+
+            // 滚动到结果区域，方便老人看到
+            box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        /* ==========================================
+           六、渲染历史记录表格
+           ========================================== */
+        function renderTable() {
+            const records = getRecords();
+            const tbody = document.getElementById('recordBody');
+            const emptyTip = document.getElementById('emptyTip');
+
+            tbody.innerHTML = '';
+
+            if (records.length === 0) {
+                emptyTip.style.display = 'block';
+                return;
+            }
+            emptyTip.style.display = 'none';
+
+            // 遍历每条记录，生成表格行
+            records.forEach(record => {
+                // 用记录里的时间重新判断一次，保证表格里的标签准确
+                const recordTime = new Date(record.timestamp);
+                const judgeResult = judgeBloodPressure(
+                    record.systolic, record.diastolic, record.age, recordTime
+                );
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${record.time}</td>
+                    <td>${record.systolic}</td>
+                    <td>${record.diastolic}</td>
+                    <td><span class="tag ${judgeResult.tagClass}">${judgeResult.level}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        /* ==========================================
+           六点五、渲染血压趋势折线图（ECharts实现）
+           配色与整体棕色系统一：
+           - 收缩压线：深马鞍棕 #8B4513
+           - 舒张压线：浅棕褐色 #D2B48C
+           - 正常范围色带：淡绿色（通用认知，绿色=安全）
+           ========================================== */
+        let chartInstance = null;  // 保存图表实例，避免重复初始化
+
+        function renderChart() {
+            const records = getRecords();
+            const chartDom = document.getElementById('bpChart');
+
+            // 没有数据时显示提示，不画图
+            if (records.length === 0) {
+                chartDom.innerHTML = '<div style="text-align:center;color:#999;padding:80px 0;">暂无血压数据，录入后自动生成趋势图</div>';
+                return;
+            }
+
+            // 记录是按"新的在前"存储的，画图时要反过来，让时间轴从左到右是从旧到新
+            const sortedRecords = [...records].reverse();
+
+            // 准备三个数组：X轴时间标签、高压数据、低压数据
+            const xAxisData = [];
+            const systolicData = [];   // 收缩压（高压）
+            const diastolicData = [];  // 舒张压（低压）
+
+            sortedRecords.forEach(record => {
+                // 时间标签简化显示：只保留"月-日 时:分"，太长了图上放不下
+                const d = new Date(record.timestamp);
+                const timeLabel = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+                xAxisData.push(timeLabel);
+                systolicData.push(record.systolic);
+                diastolicData.push(record.diastolic);
+            });
+
+            // 初始化ECharts实例（如果已经存在就复用，避免重复创建）
+            if (!chartInstance) {
+                chartInstance = echarts.init(chartDom);
+            }
+
+            // 图表配置项
+            const option = {
+                // 提示框：鼠标悬停时显示详细数值
+                tooltip: {
+                    trigger: 'axis',
+                    // 适老化：提示框字体放大
+                    textStyle: { fontSize: 14 }
+                },
+                // 图例：两条线的名称说明
+                legend: {
+                    data: ['高压（收缩压）', '低压（舒张压）'],
+                    bottom: 0,  // 图例放底部，不遮挡折线
+                    textStyle: { fontSize: 14, color: '#5D4037' }
+                },
+                // 网格边距：给标签留空间
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '15%',
+                    top: '10%',
+                    containLabel: true
+                },
+                // X轴：时间
+                xAxis: {
+                    type: 'category',
+                    data: xAxisData,
+                    axisLabel: {
+                        color: '#7B3F00',  // 棕色文字
+                        fontSize: 12,
+                        rotate: 30  // 标签倾斜，避免重叠
+                    },
+                    axisLine: { lineStyle: { color: '#D2B48C' } }
+                },
+                // Y轴：血压值（mmHg）
+                yAxis: {
+                    type: 'value',
+                    name: 'mmHg',
+                    min: 50,   // Y轴从50开始，到200结束，覆盖血压常见范围
+                    max: 200,
+                    axisLabel: {
+                        color: '#7B3F00',
+                        fontSize: 12
+                    },
+                    axisLine: { lineStyle: { color: '#D2B48C' } },
+                    splitLine: { lineStyle: { color: '#F0E6D6' } }  // 网格线浅棕色
+                },
+                // 两条折线的数据
+                series: [
+                    {
+                        name: '高压（收缩压）',
+                        type: 'line',
+                        data: systolicData,
+                        // 深棕色粗线，突出高压（更需要关注）
+                        lineStyle: { color: '#8B4513', width: 3 },
+                        itemStyle: { color: '#8B4513' },
+                        // 正常范围色带：收缩压 90-140 之间标绿色背景
+                        markArea: {
+                            silent: true,  // 不响应鼠标事件
+                            itemStyle: { color: 'rgba(82, 196, 26, 0.08)' },  // 淡绿色半透明
+                            data: [[
+                                { yAxis: 90 },
+                                { yAxis: 140 }
+                            ]]
+                        },
+                        // 数据点标记
+                        symbol: 'circle',
+                        symbolSize: 8
+                    },
+                    {
+                        name: '低压（舒张压）',
+                        type: 'line',
+                        data: diastolicData,
+                        // 浅棕色线，区分高压
+                        lineStyle: { color: '#D2B48C', width: 2 },
+                        itemStyle: { color: '#D2B48C' },
+                        symbol: 'circle',
+                        symbolSize: 6
+                    }
+                ]
+            };
+
+            // 把配置应用到图表
+            chartInstance.setOption(option);
+        }
+
+        // 窗口大小变化时自动重绘图表，保证手机横竖屏切换都正常
+        window.addEventListener('resize', () => {
+            if (chartInstance) {
+                chartInstance.resize();
+            }
+        });
+
+        /* ==========================================
+           七、家属端统计数据更新
+           ========================================== */
+        function updateStats() {
+            const records = getRecords();
+            document.getElementById('totalCount').textContent = records.length;
+
+            let normalCount = 0;
+            records.forEach(record => {
+                const recordTime = new Date(record.timestamp);
+                const judgeResult = judgeBloodPressure(
+                    record.systolic, record.diastolic, record.age, recordTime
+                );
+                if (judgeResult.type === 'normal') {
+                    normalCount++;
+                }
+            });
+
+            document.getElementById('normalCount').textContent = normalCount;
+            document.getElementById('abnormalCount').textContent = records.length - normalCount;
+        }
+
+        /* ==========================================
+           八、视图切换：老人模式 / 家属模式
+           ========================================== */
+        function switchView(view) {
+            const elderBtn = document.querySelectorAll('.view-btn')[0];
+            const familyBtn = document.querySelectorAll('.view-btn')[1];
+            const statsCard = document.getElementById('statsCard');
+
+            if (view === 'elder') {
+                elderBtn.classList.add('active');
+                familyBtn.classList.remove('active');
+                statsCard.classList.remove('family-only');
+                // 老人模式隐藏统计卡片
+                statsCard.style.display = 'none';
+            } else {
+                familyBtn.classList.add('active');
+                elderBtn.classList.remove('active');
+                statsCard.classList.add('family-only');
+                // 家属模式显示统计卡片
+                statsCard.style.display = 'block';
+            }
+            updateStats();
+        }
+
+        /* ==========================================
+           九、清空所有记录
+           ========================================== */
+        function clearAllRecords() {
+            if (confirm('确定要清空所有血压记录吗？此操作不可恢复。')) {
+                localStorage.removeItem(STORAGE_KEY);
+                renderTable();
+                updateStats();
+                renderChart();
+                document.getElementById('resultBox').style.display = 'none';
+            }
+        }
+
+        /* ==========================================
+           十、页面初始化：加载历史数据
+           ========================================== */
+        window.onload = function() {
+            renderTable();
+            updateStats();
+            renderChart();
+            // 默认隐藏家属统计卡片
+            document.getElementById('statsCard').style.display = 'none';
+        };
+    </script>
+</body>
+</html>
